@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charla-VBout Webhook Handler</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .info { background-color: #cce7ff; color: #004085; border: 1px solid #b8daff; }
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .webhook-url {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 20px 0;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .test-result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 Charla-VBout Webhook Handler</h1>
+        <p>This webhook handler connects your Charla prechat forms to VBout CRM.</p>
+
+        <div class="status info">
+            <strong>Status:</strong> Webhook handler is deployed and ready to receive Charla form submissions.
+        </div>
+
+        <h2>📍 Your Webhook URL</h2>
+        <p>Use this URL in your Charla webhook configuration:</p>
+        <div class="webhook-url" id="webhookUrl">
+            Loading webhook URL...
+        </div>
+
+        <h2>🧪 Test Your Integration</h2>
+        <p>Click the button below to send a test webhook payload to verify your integration is working:</p>
+        <button onclick="testWebhook()">Send Test Webhook</button>
+        
+        <div id="testResult" class="test-result"></div>
+
+        <h2>📋 Setup Checklist</h2>
+        <ul>
+            <li>✅ Webhook function deployed to Netlify</li>
+            <li>⚙️ Environment variables configured (VBOUT_API_KEY)</li>
+            <li>🔗 Webhook URL added to Charla settings</li>
+            <li>🧪 Test integration with real form submission</li>
+        </ul>
+
+        <h2>📖 How It Works</h2>
+        <ol>
+            <li>User fills out prechat form on your website</li>
+            <li>Charla sends webhook data to this endpoint</li>
+            <li>Function processes the data and creates contact in VBout</li>
+            <li>Success/error response sent back to Charla</li>
+        </ol>
+
+        <h2>🔍 Debugging</h2>
+        <p>Check the Netlify function logs if you encounter issues:</p>
+        <p><strong>Netlify Dashboard → Functions → charla-webhook → View logs</strong></p>
+    </div>
+
+    <script>
+        // Set the webhook URL based on current domain
+        document.addEventListener('DOMContentLoaded', function() {
+            const webhookUrl = `${window.location.origin}/.netlify/functions/charla-webhook`;
+            document.getElementById('webhookUrl').textContent = webhookUrl;
+        });
+
+        async function testWebhook() {
+            const testData = {
+                "event": "prechat:formsubmission",
+                "time": new Date().toISOString(),
+                "visitor_id": "test-" + Math.random().toString(36).substr(2, 9),
+                "fields": [
+                    {
+                        "id": "email_test",
+                        "name": "Email",
+                        "value": "test@example.com"
+                    },
+                    {
+                        "id": "phone_test",
+                        "name": "Phone Number",
+                        "value": "1234567890"
+                    },
+                    {
+                        "id": "country_test",
+                        "name": "Country",
+                        "value": "United States"
+                    }
+                ],
+                "property_url": window.location.origin,
+                "url": `${window.location.origin}/.netlify/functions/charla-webhook`
+            };
+
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'test-result info';
+            resultDiv.innerHTML = '⏳ Sending test webhook...';
+
+            try {
+                const response = await fetch('/.netlify/functions/charla-webhook', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `
+                        <strong>✅ Test Successful!</strong><br>
+                        Contact created in VBout successfully.<br>
+                        <small>Response: ${JSON.stringify(result, null, 2)}</small>
+                    `;
+                } else {
+                    throw new Error(result.error || 'Unknown error');
+                }
+            } catch (error) {
+                resultDiv.className = 'test-result';
+                resultDiv.style.backgroundColor = '#f8d7da';
+                resultDiv.style.color = '#721c24';
+                resultDiv.style.border = '1px solid #f5c6cb';
+                resultDiv.innerHTML = `
+                    <strong>❌ Test Failed</strong><br>
+                    Error: ${error.message}<br>
+                    <small>Check the Netlify function logs for more details.</small>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
