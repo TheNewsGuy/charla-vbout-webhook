@@ -57,8 +57,8 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // Build the URL with correct authentication parameter
-        let vboutUrl = `https://api.vbout.com/1/emailmarketing/addcontact?key=${VBOUT_API_KEY}&email=${encodeURIComponent(email)}`;
+        // Build the URL with correct authentication parameter and required status field
+        let vboutUrl = `https://api.vbout.com/1/emailmarketing/addcontact?key=${VBOUT_API_KEY}&email=${encodeURIComponent(email)}&status=active`;
         
         // Add optional fields
         if (phone) {
