@@ -57,142 +57,73 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // Try VBout API with different approaches
-        const apiAttempts = [
-            // Attempt 1: Standard form data with apikey
-            {
-                method: 'form',
-                url: 'https://api.vbout.com/1/emailmarketing/addcontact',
-                data: {
-                    apikey: VBOUT_API_KEY,
-                    email: email,
-                    phone: phone || '',
-                    country: country || '',
-                    customfield1: visitorId,
-                    customfield2: propertyUrl,
-                    ...(VBOUT_LIST_ID && { listid: VBOUT_LIST_ID })
-                }
-            },
-            // Attempt 2: JSON with Authorization header
-            {
-                method: 'json',
-                url: 'https://api.vbout.com/1/emailmarketing/addcontact',
-                data: {
-                    email: email,
-                    phone: phone || '',
-                    country: country || '',
-                    customfield1: visitorId,
-                    customfield2: propertyUrl,
-                    ...(VBOUT_LIST_ID && { listid: VBOUT_LIST_ID })
-                },
-                headers: {
-                    'Authorization': `Bearer ${VBOUT_API_KEY}`,
-                    'Content-Type': 'application/json'
-                }
-            },
-            // Attempt 3: Different parameter name
-            {
-                method: 'form',
-                url: 'https://api.vbout.com/1/emailmarketing/addcontact',
-                data: {
-                    api_key: VBOUT_API_KEY,
-                    email: email,
-                    phone: phone || '',
-                    country: country || '',
-                    customfield1: visitorId,
-                    customfield2: propertyUrl,
-                    ...(VBOUT_LIST_ID && { listid: VBOUT_LIST_ID })
-                }
-            },
-            // Attempt 4: GET method with query parameters
-            {
-                method: 'get',
-                url: 'https://api.vbout.com/1/emailmarketing/addcontact',
-                params: {
-                    apikey: VBOUT_API_KEY,
-                    email: email,
-                    phone: phone || '',
-                    country: country || '',
-                    customfield1: visitorId,
-                    customfield2: propertyUrl,
-                    ...(VBOUT_LIST_ID && { listid: VBOUT_LIST_ID })
-                }
-            }
-        ];
-
-        let lastError = null;
-
-        for (let i = 0; i < apiAttempts.length; i++) {
-            const attempt = apiAttempts[i];
-            console.log(`Trying VBout API attempt ${i + 1}: ${attempt.method} method`);
-
-            try {
-                let response;
-
-                if (attempt.method === 'form') {
-                    // Form-encoded data
-                    const params = new URLSearchParams();
-                    Object.keys(attempt.data).forEach(key => {
-                        if (attempt.data[key]) {
-                            params.append(key, attempt.data[key]);
-                        }
-                    });
-
-                    response = await axios.post(attempt.url, params, {
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                            ...attempt.headers
-                        },
-                        timeout: 15000
-                    });
-
-                } else if (attempt.method === 'json') {
-                    // JSON data
-                    response = await axios.post(attempt.url, attempt.data, {
-                        headers: attempt.headers,
-                        timeout: 15000
-                    });
-
-                } else if (attempt.method === 'get') {
-                    // GET request with query parameters
-                    response = await axios.get(attempt.url, {
-                        params: attempt.params,
-                        timeout: 15000
-                    });
-                }
-
-                console.log(`Attempt ${i + 1} - VBout API response:`, response.data);
-
-                // Check if successful
-                if (response.data?.response?.status === 'success' || 
-                    response.data?.status === 'success' ||
-                    response.status === 200) {
-                    
-                    return {
-                        statusCode: 200,
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            success: true,
-                            message: 'Contact created successfully in VBout',
-                            method_used: `${attempt.method} - attempt ${i + 1}`,
-                            contact_id: response.data?.response?.data?.id || response.data?.data?.id || null,
-                            email: email,
-                            vbout_response: response.data
-                        })
-                    };
-                }
-
-            } catch (error) {
-                console.log(`Attempt ${i + 1} failed:`, error.response?.data || error.message);
-                lastError = error;
-                continue; // Try next method
-            }
+        // Build the URL with correct authentication parameter
+        let vboutUrl = `https://api.vbout.com/1/emailmarketing/addcontact?key=${VBOUT_API_KEY}&email=${encodeURIComponent(email)}`;
+        
+        // Add optional fields
+        if (phone) {
+            vboutUrl += `&phone=${encodeURIComponent(phone)}`;
+        }
+        if (country) {
+            vboutUrl += `&country=${encodeURIComponent(country)}`;
+        }
+        if (visitorId) {
+            vboutUrl += `&customfield1=${encodeURIComponent(visitorId)}`;
+        }
+        if (propertyUrl) {
+            vboutUrl += `&customfield2=${encodeURIComponent(propertyUrl)}`;
+        }
+        if (VBOUT_LIST_ID) {
+            vboutUrl += `&listid=${VBOUT_LIST_ID}`;
         }
 
-        // All attempts failed
-        throw lastError || new Error('All API attempts failed');
+        console.log('Calling VBout URL:', vboutUrl.replace(VBOUT_API_KEY, '[REDACTED]'));
+
+        // Make the API call using GET method with query parameters
+        const vboutResponse = await axios.get(vboutUrl, {
+            timeout: 15000,
+            validateStatus: (status) => status < 500 // Accept any status to see the response
+        });
+
+        console.log('VBout API response status:', vboutResponse.status);
+        console.log('VBout API response data:', JSON.stringify(vboutResponse.data, null, 2));
+
+        // Check if VBout request was successful
+        if (vboutResponse.status === 200 && 
+            (vboutResponse.data?.response?.header?.status === 'success' || 
+             vboutResponse.data?.response?.status === 'success')) {
+            
+            return {
+                statusCode: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    success: true,
+                    message: 'Contact created successfully in VBout',
+                    contact_id: vboutResponse.data?.response?.data?.id || null,
+                    email: email,
+                    vbout_response: vboutResponse.data
+                })
+            };
+        } else {
+            // VBout returned an error, but let's see what it says
+            console.error('VBout API error response:', vboutResponse.data);
+            
+            return {
+                statusCode: 200, // Return 200 to Charla but include error details
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    success: false,
+                    message: 'VBout API call completed but returned an error',
+                    vbout_status: vboutResponse.status,
+                    vbout_response: vboutResponse.data,
+                    email: email
+                })
+            };
+        }
 
     } catch (error) {
         console.error('Error processing webhook:', error.message);
@@ -209,8 +140,9 @@ exports.handler = async (event, context) => {
             },
             body: JSON.stringify({
                 success: false,
-                error: 'Failed to create contact in VBout',
+                error: 'Failed to process webhook',
                 details: error.message,
+                vbout_error: error.response?.data,
                 timestamp: new Date().toISOString()
             })
         };
