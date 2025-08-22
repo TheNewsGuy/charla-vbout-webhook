@@ -57,14 +57,15 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // Prepare VBout contact data
+        // Prepare VBout contact data using correct parameter names
         const vboutContactData = {
-            key: VBOUT_API_KEY,
+            apikey: VBOUT_API_KEY,  // VBout uses 'apikey' parameter
             email: email,
             phone: phone || '',
             country: country || '',
-            custom1: visitorId,
-            custom2: propertyUrl
+            // Store additional info in custom fields
+            customfield1: visitorId, // Charla visitor ID
+            customfield2: propertyUrl, // Website URL where form was submitted
         };
 
         // Add to specific list if configured
@@ -72,18 +73,26 @@ exports.handler = async (event, context) => {
             vboutContactData.listid = VBOUT_LIST_ID;
         }
 
-        console.log('Sending data to VBout:', {
-            ...vboutContactData,
-            key: '[REDACTED]'
+        // Convert data to URL-encoded format (VBout expects form data, not JSON)
+        const params = new URLSearchParams();
+        Object.keys(vboutContactData).forEach(key => {
+            if (vboutContactData[key]) {
+                params.append(key, vboutContactData[key]);
+            }
         });
 
-        // Send data to VBout API
+        console.log('Sending data to VBout:', {
+            ...vboutContactData,
+            apikey: '[REDACTED]' // Don't log the API key
+        });
+
+        // Send data to VBout API with correct format
         const vboutResponse = await axios.post(
-            'https://api.vbout.com/1/emailmarketing/addcontact.json',
-            vboutContactData,
+            'https://api.vbout.com/1/emailmarketing/addcontact',
+            params,
             {
                 headers: { 
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                     'User-Agent': 'Charla-VBout-Integration/1.0'
                 },
                 timeout: 15000
