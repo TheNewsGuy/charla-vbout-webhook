@@ -1,0 +1,12 @@
+{
+  "name": "charla-vbout-webhook",
+  "version": "1.0.0",
+  "description": "Webhook handler for Charla to VBout integration",
+  "main": "index.js",
+  "scripts": {
+    "build": "npm install"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}
