@@ -90,7 +90,8 @@ exports.handler = async (event, context) => {
 
         // Check if VBout request was successful
         if (vboutResponse.status === 200 && 
-            (vboutResponse.data?.response?.header?.status === 'success' || 
+            (vboutResponse.data?.response?.header?.status === 'ok' || 
+             vboutResponse.data?.response?.header?.status === 'success' ||
              vboutResponse.data?.response?.status === 'success')) {
             
             return {
